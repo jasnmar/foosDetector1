@@ -1,0 +1,1 @@
+foosDetector1
