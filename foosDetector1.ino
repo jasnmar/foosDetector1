@@ -1,5 +1,5 @@
 
-//#define DEBUG = true;
+#define DEBUG = true;
 //#define VERBOSE = true;
 #ifdef DEBUG
   bool debugging = true;
@@ -11,7 +11,6 @@
 // Used for figuring out time, both related to when to post and when to sleep
 //#include <Time.h>
 #include <TimeLib.h>
-
 #include "mwwifi.h"
 
 
@@ -177,9 +176,8 @@ void setupTime() {
 
 
 bool connectToWifi() {
-  //this really shouldn't be here. I don't know a good way to do it
-  const char* ssid     =  "";
-  const char* password = "";
+  const char* ssid     =  NETWORK;
+  const char* password = SECRET;
 
 
   #ifdef DEBUG
