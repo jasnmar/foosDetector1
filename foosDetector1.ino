@@ -1,4 +1,6 @@
 
+#define POST = true;
+
 #define DEBUG = true;
 //#define VERBOSE = true;
 #ifdef DEBUG
@@ -43,7 +45,9 @@ const int echo_pin = 17;
 // Define the Maximum and Minimum durations that you want to listen for
 // These are "unitless" and are just measuring raw time. As I go through
 // the LLS they will need to be adjusted.
-const int minDuration = 1800;
+
+//const int minDuration = 1800;
+const int minDuration = 100;
 const int maxDuration = 16000;
 const int numChecks = 25;
 
@@ -185,6 +189,7 @@ bool connectToWifi() {
   Serial.println();
   Serial.print("Connecting to ");
   Serial.println(ssid);
+  //Serial.println(password);
   #endif
   WiFi.begin(ssid, password);
  
@@ -217,7 +222,7 @@ void post(String message) {
   // This points at the slack-jira-test-pub slack channel. It'll need to point to
   // the nh foos room eventually
   // TODO
-  const String URL = "/services/T02EG0KQK/BCL4V1BHN/vVD9eUezVuWreTCiAGk0kNL5";
+  const String URL = SLACKURL;
   
   // These are the messages that the bot posts to slack.
   // Some day it'd be nice to have a buch of meesages and pick one randomly
@@ -267,8 +272,9 @@ void post(String message) {
   Serial.print(request);
   Serial.println();
   #endif
+  #ifdef POST
   client.print(request);
-
+  #endif
   long timeout = millis() + 5000;
   while (!client.available()) {
     if (millis() > timeout) {
@@ -357,15 +363,19 @@ int listen() {
 // is to turn the LED on / off and convert the int to a bool.
 // Either just put listen in here and return a bool or put this in listen
 bool presence() {
-  #ifdef DEBUG
-  Serial.println("Looking for foosers");
-  #endif
+
   int value = listen();
   if (value == 1) {
     digitalWrite(led_pin, HIGH);
+    #ifdef DEBUG
+    Serial.println("I see a foosers");
+    #endif
     return true;
   } else {
     digitalWrite(led_pin, LOW);
+    #ifdef DEBUG
+    Serial.println("No foosers Seen");
+    #endif
     return false;
   }
 }
