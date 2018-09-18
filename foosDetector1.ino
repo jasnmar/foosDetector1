@@ -1,7 +1,7 @@
 
 #define POST = true;
 
-#define DEBUG = true;
+//#define DEBUG = true;
 //#define VERBOSE = true;
 #ifdef DEBUG
   bool debugging = true;
@@ -46,8 +46,7 @@ const int echo_pin = 17;
 // These are "unitless" and are just measuring raw time. As I go through
 // the LLS they will need to be adjusted.
 
-//const int minDuration = 1800;
-const int minDuration = 100;
+const int minDuration = 1800;
 const int maxDuration = 16000;
 const int numChecks = 25;
 
@@ -506,9 +505,14 @@ void loop() {
       // If the ping isn't high
       if (!trig_status) {
         // Check for an echo
+        #ifdef DEBUG
+        Serial.print("Detection Counter: ");
+        Serial.println(somethingInRange);
+        #endif
         if (presence()) {
           // If an echo is recieved and the counter is less than the 
           // max (where it triggers) increment the counter.
+          
           if (somethingInRange < numChecks) {
             somethingInRange = somethingInRange + 1;
           }
