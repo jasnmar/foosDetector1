@@ -1,5 +1,5 @@
 
-#define POST = true;
+#define POSTTOSLACK = true;
 
 //#define DEBUG = true;
 //#define VERBOSE = true;
@@ -46,8 +46,8 @@ const int echo_pin = 17;
 // These are "unitless" and are just measuring raw time. As I go through
 // the LLS they will need to be adjusted.
 
-const int minDuration = 1800;
-const int maxDuration = 16000;
+const int minDuration = 300;
+const int maxDuration = 5000;
 const int numChecks = 25;
 
 // Used to measure the time from the ping to the echo.
@@ -88,8 +88,14 @@ const int usToSeconds = 1000000;
 // This maxes somewhere between 1/2 and 1 hour (max int in microseconds)
 const int sleepTime = 1800;
 
+// tells the application whether it's in "first start" mode or continuing mode. 
+// Get's set to true in Setup, then false the first time it detects the door
+// after startup.
+bool coldBoot;
+
 // Setup runs once as the board comes on. Used to init stuff
 void setup() {
+  coldBoot = true;
   oldtimer = millis();
   timer = oldtimer;
   // Set the led_pin as an output so that it can blink
@@ -271,7 +277,8 @@ void post(String message) {
   Serial.print(request);
   Serial.println();
   #endif
-  #ifdef POST
+  #ifdef POSTTOSLACK
+  Serial.println("Posting to Slack");
   client.print(request);
   #endif
   long timeout = millis() + 5000;
@@ -367,13 +374,13 @@ bool presence() {
   if (value == 1) {
     digitalWrite(led_pin, HIGH);
     #ifdef DEBUG
-    Serial.println("I see a foosers");
+    Serial.println("I see a door");
     #endif
     return true;
   } else {
     digitalWrite(led_pin, LOW);
     #ifdef DEBUG
-    Serial.println("No foosers Seen");
+    Serial.println("No door Seen");
     #endif
     return false;
   }
@@ -533,10 +540,17 @@ void loop() {
             // and set the flag indicating as much.
             if (somethingInRange >= (numChecks)) {
               #ifdef DEBUG
-              Serial.println("foundMessage");
+              Serial.println("goneMessage");
               #endif
-              post("I see foos people");
-              tripped = true;
+              if (coldBoot == true) {
+                post("Table is open for business");
+                tripped = true;
+                coldBoot = false;
+              } else {
+                post("Foos people have left me");
+                tripped = true;
+                
+              }
             }
           } 
         }  else {
@@ -545,9 +559,9 @@ void loop() {
           if (somethingInRange == 0) {
             if (tripped) {
               #ifdef DEBUG
-              Serial.println("goneMessage");
+              Serial.println("foundMessage");
               #endif
-              post("Foos people have left me");
+              post("I see foos people ");
               tripped = false;
             }
           }
