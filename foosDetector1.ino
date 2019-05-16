@@ -9,12 +9,15 @@
 // For the OLED Screen. Currently not being used at all
 // This actually may be needed to turn the screen off during low power mode. We'll see.
 //#include "SSD1306.h"
+//SSD1306  display(0x3c, 4, 15);
 
 // Used for figuring out time, both related to when to post and when to sleep
 //#include <Time.h>
 #include <TimeLib.h>
 #include "mwwifi.h"
-
+const String foundMessage = "I see foos people, I think (I'm still figuring out this new room)";
+const String goneMessage = "Foos people have left me (I think?)";
+const String timeError = "I can't figure out what time it is";
 
 // Enables the ESP32 to connect to wifi and SSL (slack).
 //#include <WiFi.h>
@@ -47,7 +50,7 @@ const int echo_pin = 17;
 // the LLS they will need to be adjusted.
 
 const int minDuration = 300;
-const int maxDuration = 5000;
+const int maxDuration = 6000;
 const int numChecks = 25;
 
 // Used to measure the time from the ping to the echo.
@@ -64,8 +67,9 @@ bool trig_status = false;
 // Generic for checking time loops.
 // These should probably get replaced now that there is actually a time library
 // TODO - Later
-long timer = 0;
-long oldtimer;
+unsigned long timer = 0;
+unsigned long oldtimer;
+unsigned long flashtimer;
 
 
 //Variables related to get time stuff
@@ -108,6 +112,8 @@ void setup() {
   // Sets the "Detected" to 0 to start things off
   tripped = false;
 
+  flashtimer = millis();
+
   #ifdef DEBUG
   Serial.begin(115200);
   #endif
@@ -136,6 +142,9 @@ void setup() {
       post("Does anyone know what time it is?");
     }
   }
+
+
+  
 }
 
 // This generally just checks if the current time is withing working hours.
@@ -144,9 +153,15 @@ void setup() {
 bool workTime() {
   int myWeekDay = weekday();
   int myHour = hour();
+  #ifdef VERBOSE
+  Serial.print("Weekday: ");
+  Serial.println(myWeekDay);
+  Serial.print("myHour: ");
+  Serial.println(myHour);
+  #endif
   if (weekday() > 1) {
     if (weekday() < 7) {
-      if (myHour > 8) {
+      if (myHour > 7) {
         if (myHour < 17) {
           return true;
         }
@@ -232,8 +247,7 @@ void post(String message) {
   // These are the messages that the bot posts to slack.
   // Some day it'd be nice to have a buch of meesages and pick one randomly
   // TODO
-  const String foundMessage = "I see foos people";
-  const String goneMessage = "Foos people have left me";
+
   #ifdef DEBUG
   Serial.println("Connecting to host...");
   #endif
@@ -243,6 +257,8 @@ void post(String message) {
     Serial.println("Connection failed");
     #endif
     client.stop();
+    // If it fails to post, try again?
+    post(message);
     return;
   }
   #ifdef DEBUG
@@ -374,13 +390,13 @@ bool presence() {
   if (value == 1) {
     digitalWrite(led_pin, HIGH);
     #ifdef DEBUG
-    Serial.println("I see a door");
+    Serial.println("I see a person");
     #endif
     return true;
   } else {
     digitalWrite(led_pin, LOW);
     #ifdef DEBUG
-    Serial.println("No door Seen");
+    Serial.println("No person Seen");
     #endif
     return false;
   }
@@ -492,7 +508,14 @@ void loop() {
     #ifdef VERBOSE
     Serial.println("Passed work hours");
     #endif
+    
     timer = millis();
+    if (timer - flashtimer > 5000 ){
+      digitalWrite(led_pin, HIGH);
+      delay(50);
+      digitalWrite(led_pin, LOW);
+      flashtimer = timer;
+    }
     // This didn't seem to get set when I had it in setup. Not sure why
     // Init the oldtimer variable.
     if (oldtimer == 0) {
@@ -505,9 +528,29 @@ void loop() {
     // that clever yet.
     if (timer - oldtimer > pingDuration) {
       oldtimer = timer;
+    
+      if (coldBoot) {
+        coldBoot = false;
+        #ifdef DEBUG
+        Serial.println("Cold Boot");
+        #endif
+        if (hour() >= 8) {
+          post("Something strange... Was my power out? It's prime foosing hours and I just started up. :cry:");
+        } else {
+          //I could post a good morning wakey message here.
+          #ifdef DEBUG
+          Serial.println("Good morning, time for foosing");
+          #endif
+        }
+        
+      }
+     
+      
       // Send the ping
       //Serial.print(now());
+      #ifdef DEBUG
       printTime();
+      #endif
       trigger();
       // If the ping isn't high
       if (!trig_status) {
@@ -530,9 +573,7 @@ void loop() {
             somethingInRange = somethingInRange - 1;
           }
         }
-        // I really don't see any reason for this. I added it initially as a flag when
-        // I was having trouble understanding why it was pinging twice as much as it 
-        // was receiving echos. I think it can go away.
+        //This makes sure that it falls back below half the range
         if (somethingInRange >= (numChecks / 2)) {
           // Check to see if a person has been detected and a message sent
           if (!tripped) {
@@ -540,17 +581,11 @@ void loop() {
             // and set the flag indicating as much.
             if (somethingInRange >= (numChecks)) {
               #ifdef DEBUG
-              Serial.println("goneMessage");
+              Serial.println("foundMessage");
               #endif
-              if (coldBoot == true) {
-                post("Table is open for business");
-                tripped = true;
-                coldBoot = false;
-              } else {
-                post("Foos people have left me");
-                tripped = true;
-                
-              }
+              post(foundMessage);
+              tripped = true; 
+   
             }
           } 
         }  else {
@@ -559,15 +594,16 @@ void loop() {
           if (somethingInRange == 0) {
             if (tripped) {
               #ifdef DEBUG
-              Serial.println("foundMessage");
+              Serial.println("goneMessage");
               #endif
-              post("I see foos people ");
+              post(goneMessage);
               tripped = false;
+
             }
           }
-        }
-      } 
-    }
+        } 
+      }
+    } 
   } else {
     #ifdef VERBOSE
     Serial.println("Non-working hours");
