@@ -534,7 +534,7 @@ void loop() {
         #ifdef DEBUG
         Serial.println("Cold Boot");
         #endif
-        if (hour() >= 8) {
+        if (hour() >= 9) {
           post("Something strange... Was my power out? It's prime foosing hours and I just started up. :cry:");
         } else {
           //I could post a good morning wakey message here.
